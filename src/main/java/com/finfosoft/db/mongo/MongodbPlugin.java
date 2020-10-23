@@ -19,42 +19,34 @@ import java.util.Arrays;
 
 import com.jfinal.log.Logger;
 import com.jfinal.plugin.IPlugin;
-import com.mongodb.MongoClient;
-import com.mongodb.MongoClientOptions;
-import com.mongodb.MongoClientOptions.Builder;
+import com.mongodb.ConnectionString;
+import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoCredential;
 import com.mongodb.ServerAddress;
 import com.mongodb.WriteConcern;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
 
 public class MongodbPlugin implements IPlugin {
-    
+
     private static final String DEFAULT_HOST = "127.0.0.1";
     private static final int DEFAUL_PORT = 27017;
 
     protected final Logger logger = Logger.getLogger(getClass());
 
     private MongoClient client;
-    private String host;
-    private int port;
+    private String url;
     private String database;
     private String username;
     private String password;
 
-    public MongodbPlugin(String database) {
-        this.host = DEFAULT_HOST;
-        this.port = DEFAUL_PORT;
+    public MongodbPlugin(String url, String database) {
+        this.url = url;
         this.database = database;
     }
 
-    public MongodbPlugin(String host, int port, String database) {
-        this.host = host;
-        this.port = port;
-        this.database = database;
-    }
-    
-    public MongodbPlugin(String host, int port, String database,String username,String password) {
-        this.host = host;
-        this.port = port;
+    public MongodbPlugin(String url, String database, String username, String password) {
+        this.url = url;
         this.database = database;
         this.username = username;
         this.password = password;
@@ -62,25 +54,19 @@ public class MongodbPlugin implements IPlugin {
 
     public boolean start() {
         try {
-        	Builder builder = new MongoClientOptions.Builder();
-        	builder.connectionsPerHost(300); // 连接池设置为300个连接,默认为100
-        	builder.connectTimeout(3000);    // 连接超时，推荐>3000毫秒
-        	builder.maxWaitTime(5000);       //
-        	builder.socketTimeout(0);        // 套接字超时时间，0无限制
-            builder.threadsAllowedToBlockForConnectionMultiplier(5000);// 线程队列数，如果连接线程排满了队列就会抛出“Out of semaphores to get db”错误。
-            builder.writeConcern(WriteConcern.SAFE);//
-            MongoClientOptions options=builder.build();
-
-            if(username==null){
-            	client = new MongoClient(host, port);
-            }else{
-            	//MongoCredential credential = MongoCredential.createMongoCRCredential(username, database, password.toCharArray());
-            	MongoCredential credential = MongoCredential.createCredential(username, database, password.toCharArray());
-            	client = new MongoClient(Arrays.asList(new ServerAddress(host, port)),Arrays.asList(credential), options);
+            if (username == null) {
+                client = MongoClients.create(url);
+            } else {
+                MongoCredential credential = MongoCredential.createCredential(username, database,
+                        password.toCharArray());
+                ConnectionString connectionString = new ConnectionString(url);
+                MongoClientSettings settings = MongoClientSettings.builder().credential(credential)
+                        .applyConnectionString(connectionString).build();
+                client = MongoClients.create(settings);
             }
-            
+
         } catch (Exception e) {
-            throw new RuntimeException("can't connect mongodb, please check the host and port:" + host + "," + port, e);
+            throw new RuntimeException("can't connect mongodb, please check the host and url:" + url, e);
         }
 
         MongoKit.init(client, database);
