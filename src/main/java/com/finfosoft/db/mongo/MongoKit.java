@@ -70,20 +70,23 @@ public class MongoKit {
     }
 
     public static boolean save(final String collectionName, final Record record) {
+        return save(collectionName, toDbObject(record));
+    }
+
+    public static boolean save(final String collectionName, final Document record) {
         if(record.get("_id")!=null){
-            return MongoKit.getCollection(collectionName).replaceOne(new BasicDBObject("_id", record.get("_id")), toDbObject(record)).wasAcknowledged();
+            return MongoKit.getCollection(collectionName).replaceOne(new BasicDBObject("_id", record.get("_id")), record).wasAcknowledged();
         }else{
-            return MongoKit.getCollection(collectionName).insertOne(toDbObject(record)).wasAcknowledged();
+            return MongoKit.getCollection(collectionName).insertOne(record).wasAcknowledged();
         }
     }
 
     public static boolean save(final String collectionName, final Map<String, Object> record) {
-        return save(collectionName,new Document(record));
+        return save(collectionName, toDBObject(record));
     }
 
     public static boolean save(final String collectionName, final BasicDBObject record) {
-
-        return save(collectionName,toDbObject(toRecord(record)));
+        return save(collectionName,toRecord(record));
     }
 
     public static Record findFirst(final String collectionName) {
